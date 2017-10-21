@@ -15,26 +15,25 @@ var ReliableQueue = class ReliableQueue {
     this.expires = 600;
   }
 
-  async executeAsync (command, args) {
+  executeAsync (command, args) {
     args.unshift(0);
     let ret;
 
-    try {
-      ret = await this.redisdb.evalshaAsync(luaScripts.LUA_SHA[command], args);
-    } catch (err) {
-      if (err.code == luaScripts.NOSCRIPT) {
-        console.log('NOSCRIPT - eval instead');
-        ret = await this.redisdb.evalAsync(luaScripts.LUA_SCRIPTS[command], args);
-      } else {
+    var self = this;
+    return this.redisdb.evalshaAsync(luaScripts.LUA_SHA[command], args)
+      .then(function(ret){
+         if(!ret){
+            throw new NoResultError('No result for ' + command, 'NORESULT');
+         }
+
+         return ret;
+      }).catch(function(err){
+        if (err.code == luaScripts.NOSCRIPT) {
+          return self.redisdb.evalAsync(luaScripts.LUA_SCRIPTS[command], args);
+        }
         throw err;
-      }
-    }
+      })
 
-    if (!ret) {
-      throw new NoResultError('No result for ' + command, 'NORESULT');
-    }
-
-    return ret;
   }
 
   set ttl(expires) {

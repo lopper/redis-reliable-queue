@@ -5,24 +5,26 @@ var Promise = require('bluebird');
 var r = new ReliableQueue(redis.createClient());
 //r.ttl = 600;
 
-var processTask = async function () {
+var processTask = function () {
   let task;
   let completed;
-  try {
-    task = await r.dequeue('fisclet2');
-    console.log('task comming');
-    console.log('key: ' + task[0]);
-    console.log('data: ' + task[1]);
 
-    completed = await r.complete('fisclet2', task[0]);
-    console.log('removed ' + completed);
-  } catch (err) {
-    if (err.code != 'NORESULT') {
-      console.log(err);
-    }
-  } finally {
-    Promise.delay(1000).then(processTask);
-  }
+  r.dequeue('fisclet2')
+    .then(function(task){
+      console.log('task comming');
+      console.log('key: ' + task[0]);
+      console.log('data: ' + task[1]);
+      return r.complete('fisclet2', task[0]);
+    }).then(function(completed){
+      console.log('removed ' + completed);
+      Promise.delay(1000).then(processTask);
+    }).catch(function(err){
+      if (err.code != 'NORESULT') {
+        console.log(err);
+      }
+      Promise.delay(1000).then(processTask);
+    })
+
 
 };
 

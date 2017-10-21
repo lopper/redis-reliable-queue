@@ -5,17 +5,17 @@ var Promise = require('bluebird');
 var r = new ReliableQueue(redis.createClient());
 //r.ttl = 600;
 
-let counter = 0;
-async function produceTask() {
-  try {
-    key = await r.enqueue('fisclet2', 'data:' + (counter++));
-    console.log('Enqueue with key: ' + key);
-  } catch (err) {
-    console.log(err);
-  } finally {
-    Promise.delay(500).then(produceTask);
-  }
+var counter = 0;
+function produceTask() {
 
+  r.enqueue('fisclet2', 'data:' + (counter++))
+    .then(function(key){
+      console.log('Enqueue with key: ' + key);
+      Promise.delay(500).then(produceTask);
+    }).catch(function(err){
+      console.log(err);
+      Promise.delay(500).then(produceTask);
+    })
 };
 
 produceTask();
