@@ -4,7 +4,7 @@ var luaScripts   = require('./redis-queue-lua');
 var NoResultError = require('./noresult-error');
 
 Promise.promisifyAll(redis.RedisClient.prototype);
-
+Promise.promisifyAll(redis.Multi.prototype);
 var ReliableQueue = class ReliableQueue {
   constructor(redis) {
     if (!redis) {
@@ -39,7 +39,28 @@ var ReliableQueue = class ReliableQueue {
   set ttl(expires) {
     this.expires = expires;
   }
+  /* 
+    dataList : [
+      data
+    ]
+  */
+  enqueueMulti(qname, datalist){
+    let ret;
 
+    var self = this;
+    var multi = this.redisdb.multi();
+    for(var i = 0; i < datalist.length; i++){
+      var data = [0, qname, datalist[i]];
+      multi.evalAsync(luaScripts.LUA_SCRIPTS['enqueue'], data);
+    }
+    return multi.execAsync()
+      .then(function(replies){
+        return replies;
+      }).catch(function(err){
+
+        throw err;
+      })
+  }
   enqueue (qname, data) {
     return this.executeAsync('enqueue', [qname, data]);
   }

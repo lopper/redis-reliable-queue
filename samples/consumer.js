@@ -4,7 +4,7 @@ var Promise = require('bluebird');
 
 var r = new ReliableQueue(redis.createClient());
 //r.ttl = 600;
-
+var consumeDelay = 10;
 var processTask = function () {
   let task;
   let completed;
@@ -17,12 +17,12 @@ var processTask = function () {
       return r.complete('fisclet2', task[0]);
     }).then(function(completed){
       console.log('removed ' + completed);
-      Promise.delay(1000).then(processTask);
+      Promise.delay(consumeDelay).then(processTask);
     }).catch(function(err){
       if (err.code != 'NORESULT') {
         console.log(err);
       }
-      Promise.delay(1000).then(processTask);
+      Promise.delay(consumeDelay).then(processTask);
     })
 
 
