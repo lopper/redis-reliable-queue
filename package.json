@@ -1,6 +1,6 @@
 {
   "name": "redis-reliable-queue",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Full-featured reliable queue with NodeJS + Redis, optimized with Redis Lua script engine",
   "main": "index.js",
   "scripts": {
