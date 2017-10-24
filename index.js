@@ -2,6 +2,7 @@ var Promise = require('bluebird');
 var redis = require('redis');
 var luaScripts   = require('./redis-queue-lua');
 var NoResultError = require('./noresult-error');
+var _ = require('underscore');
 
 Promise.promisifyAll(redis.RedisClient.prototype);
 Promise.promisifyAll(redis.Multi.prototype);
@@ -68,6 +69,70 @@ var ReliableQueue = class ReliableQueue {
   dequeue (qname, cb) {
     return this.executeAsync('dequeue', [qname, this.expires]);
   };
+
+  getNumQueued(qname){
+    return this.redisdb.llenAsync(qname + ':queued')
+  }
+
+  getNumProcessing(qname){
+    return this.redisdb.llenAsync(qname + ':processing')
+  }
+
+  getAllData(qname){
+    return this.redisdb.hvalsAsync(qname + ':data')
+  }
+
+  requeueExpired (qname , max_inspect) {
+    max_inspect = max_inspect || 500;
+		var self = this;
+		var data = {
+			keys : [],
+			processing_ids : []
+		}
+
+		var PROCESSING_QUEUE_NAME =  qname + ':processing';
+		var PENDING_QUEUE_NAME =  qname + ':queued';
+		
+		this.redisdb.lrangeAsync(PROCESSING_QUEUE_NAME, 0, max_inspect)
+			.then(function(ids){
+				// create list of keys
+				data.processing_ids = _.uniq(ids);
+				_.each(data.processing_ids, function(id){
+					data.keys.push(`${qname}:tracking:${id}`);
+				})
+
+				if(data.keys.length == 0)
+					return [];
+
+				return self.redisdb.mgetAsync(data.keys);
+			}).then(function(items /* list */){
+				if(items.length === 0)
+					return [];
+
+				var keysToTransfer = [];
+				_.each(items, function(item, idx){
+					if(item == null)
+						keysToTransfer.push(data.processing_ids[idx])
+				});
+
+				var multi = self.redisdb.multi();
+				multi.rpushAsync(PENDING_QUEUE_NAME, keysToTransfer)
+				
+				_.each(keysToTransfer, function(key, idx){
+					multi.lremAsync(PROCESSING_QUEUE_NAME, 0 , key);
+				})
+				
+				return multi.execAsync().catch(function(err){
+				  throw err;
+				})
+
+			}).then(function(replies){
+        // num transfered
+        return {
+            numRequeued : data.keys.length
+        }
+			})
+  }
 
   complete (qname, key) {
     // Delete from processing on complete
