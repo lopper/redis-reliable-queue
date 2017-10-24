@@ -115,6 +115,9 @@ var ReliableQueue = class ReliableQueue {
 						keysToTransfer.push(data.processing_ids[idx])
 				});
 
+        if(keysToTransfer.length == 0)
+          return [];
+        
 				var multi = self.redisdb.multi();
 				multi.rpushAsync(PENDING_QUEUE_NAME, keysToTransfer)
 				
