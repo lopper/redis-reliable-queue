@@ -93,7 +93,7 @@ var ReliableQueue = class ReliableQueue {
 		var PROCESSING_QUEUE_NAME =  qname + ':processing';
 		var PENDING_QUEUE_NAME =  qname + ':queued';
 		
-		this.redisdb.lrangeAsync(PROCESSING_QUEUE_NAME, 0, max_inspect)
+		return this.redisdb.lrangeAsync(PROCESSING_QUEUE_NAME, 0, max_inspect)
 			.then(function(ids){
 				// create list of keys
 				data.processing_ids = _.uniq(ids);
