@@ -87,7 +87,8 @@ var ReliableQueue = class ReliableQueue {
 		var self = this;
 		var data = {
 			keys : [],
-			processing_ids : []
+      processing_ids : [],
+      numKeysToTransfer : 0
 		}
 
 		var PROCESSING_QUEUE_NAME =  qname + ':processing';
@@ -115,9 +116,10 @@ var ReliableQueue = class ReliableQueue {
 						keysToTransfer.push(data.processing_ids[idx])
 				});
 
+        data.numKeysToTransfer = keysToTransfer.length;
         if(keysToTransfer.length == 0)
           return [];
-        
+
 				var multi = self.redisdb.multi();
 				multi.rpushAsync(PENDING_QUEUE_NAME, keysToTransfer)
 				
@@ -132,7 +134,7 @@ var ReliableQueue = class ReliableQueue {
 			}).then(function(replies){
         // num transfered
         return {
-            numRequeued : data.keys.length
+          numRequeued : data.numKeysToTransfer
         }
 			})
   }
